@@ -11,6 +11,11 @@
 		1C4B41B82C14DBEF001228E6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4B41B72C14DBEF001228E6 /* ContentView.swift */; };
 		1C4B41BA2C14DBF1001228E6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1C4B41B92C14DBF1001228E6 /* Assets.xcassets */; };
 		1C4B41BD2C14DBF1001228E6 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1C4B41BC2C14DBF1001228E6 /* Preview Assets.xcassets */; };
+		1C4B41C52C14DC22001228E6 /* CoreMLProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4B41C42C14DC22001228E6 /* CoreMLProcessor.swift */; };
+		1C4B41C72C14DD3B001228E6 /* OperatorData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4B41C62C14DD3B001228E6 /* OperatorData.swift */; };
+		1C4B41C92C14DD77001228E6 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4B41C82C14DD77001228E6 /* ProgressBar.swift */; };
+		1C4B41CB2C14DE24001228E6 /* ComputeUnitMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4B41CA2C14DE24001228E6 /* ComputeUnitMappingView.swift */; };
+		1C4B41D22C153292001228E6 /* ActivityIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4B41D12C153292001228E6 /* ActivityIndicator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +25,12 @@
 		1C4B41B92C14DBF1001228E6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1C4B41BC2C14DBF1001228E6 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		1C4B41BE2C14DBF1001228E6 /* CoreMLProfiler.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CoreMLProfiler.entitlements; sourceTree = "<group>"; };
+		1C4B41C42C14DC22001228E6 /* CoreMLProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreMLProcessor.swift; sourceTree = "<group>"; };
+		1C4B41C62C14DD3B001228E6 /* OperatorData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorData.swift; sourceTree = "<group>"; };
+		1C4B41C82C14DD77001228E6 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
+		1C4B41CA2C14DE24001228E6 /* ComputeUnitMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputeUnitMappingView.swift; sourceTree = "<group>"; };
+		1C4B41CC2C14E134001228E6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1C4B41D12C153292001228E6 /* ActivityIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityIndicator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,10 +63,14 @@
 		1C4B41B42C14DBEF001228E6 /* CoreMLProfiler */ = {
 			isa = PBXGroup;
 			children = (
+				1C4B41CC2C14E134001228E6 /* Info.plist */,
 				1C4B41B52C14DBEF001228E6 /* CoreMLProfilerApp.swift */,
 				1C4B41B72C14DBEF001228E6 /* ContentView.swift */,
+				1C4B41D32C1532B9001228E6 /* Views */,
+				1C4B41C42C14DC22001228E6 /* CoreMLProcessor.swift */,
 				1C4B41B92C14DBF1001228E6 /* Assets.xcassets */,
 				1C4B41BE2C14DBF1001228E6 /* CoreMLProfiler.entitlements */,
+				1C4B41C62C14DD3B001228E6 /* OperatorData.swift */,
 				1C4B41BB2C14DBF1001228E6 /* Preview Content */,
 			);
 			path = CoreMLProfiler;
@@ -67,6 +82,16 @@
 				1C4B41BC2C14DBF1001228E6 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		1C4B41D32C1532B9001228E6 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1C4B41CA2C14DE24001228E6 /* ComputeUnitMappingView.swift */,
+				1C4B41D12C153292001228E6 /* ActivityIndicator.swift */,
+				1C4B41C82C14DD77001228E6 /* ProgressBar.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,7 +165,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				1C4B41B82C14DBEF001228E6 /* ContentView.swift in Sources */,
+				1C4B41CB2C14DE24001228E6 /* ComputeUnitMappingView.swift in Sources */,
 				1C4B41B62C14DBEF001228E6 /* CoreMLProfilerApp.swift in Sources */,
+				1C4B41D22C153292001228E6 /* ActivityIndicator.swift in Sources */,
+				1C4B41C52C14DC22001228E6 /* CoreMLProcessor.swift in Sources */,
+				1C4B41C92C14DD77001228E6 /* ProgressBar.swift in Sources */,
+				1C4B41C72C14DD3B001228E6 /* OperatorData.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -279,11 +309,14 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CoreMLProfiler/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "CoreML Profiler";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.4;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fguzman.CoreMLProfiler;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -306,11 +339,14 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CoreMLProfiler/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "CoreML Profiler";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.4;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fguzman.CoreMLProfiler;
 				PRODUCT_NAME = "$(TARGET_NAME)";
