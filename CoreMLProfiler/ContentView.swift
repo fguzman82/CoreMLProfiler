@@ -36,29 +36,36 @@ struct ContentView: View {
     @State private var loadTimeOption: String = "Median"
     @State private var compileTimes: [Double] = []
     @State private var loadTimes: [Double] = []
+    @State private var full: Bool = false
+    @State private var isHoveringLoad = false
+    @State private var isHoveringRerun = false
+
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         NavigationSplitView {
             ScrollView(.vertical) {
                 VStack(alignment: .leading) {
-                    Text("1. Select Processing Units")
-                        .font(.headline)
-                        .padding(.bottom, 5)
-                    
-                    Picker("", selection: $processingUnit) {
-                        Text("All").tag("all")
-                        Text("CPU only").tag("cpuOnly")
-                        Text("CPU and GPU").tag("cpuAndGPU")
-                        Text("CPU and Neural Engine").tag("cpuAndNeuralEngine")
+                    HStack {
+                        Toggle(isOn: $full) {
+                            Text("Enable Full Profile (Beta)")
+                        }
+                        Spacer()
+                    }.padding(.bottom)
+                    HStack {
+                        Text("Processing Units:")
+                            //.font(.headline)
+                            //.padding(.bottom, 5)
+                        
+                        Picker("", selection: $processingUnit) {
+                            Text("All").tag("all")
+                            Text("CPU only").tag("cpuOnly")
+                            Text("CPU and GPU").tag("cpuAndGPU")
+                            Text("CPU and Neural Engine").tag("cpuAndNeuralEngine")
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        //.padding(.bottom, 10)
                     }
-                    .pickerStyle(MenuPickerStyle())
-                    .padding(.bottom, 10)
-                    
-                    Text("2. Select CoreML Package")
-                        .font(.headline)
-                        .padding(.bottom, 5)
-                    
                     HStack {
                         Button(action: loadFile) {
                             Text("Load")
@@ -66,7 +73,24 @@ struct ContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
-
+                        .onHover { hovering in
+                            isHoveringLoad = hovering
+                        }
+                        .overlay(
+                            ZStack {
+                                if isHoveringLoad {
+                                    Text("Load CoreML Package")
+                                        .padding(4)
+                                        //.background(Color.gray)
+                                        //.foregroundColor(.white)
+                                        //.cornerRadius(5)
+                                        .frame(width: 200, height: 20)
+                                        .offset(x: +100)
+                                }
+                            }
+                        )
+                    }
+                    HStack {
                         if fileLoaded {
                             Text("File loaded successfully: \(fileName)")
                                 .foregroundColor(colorScheme == .dark ? .green : .blue )
@@ -76,7 +100,7 @@ struct ContentView: View {
                                 .foregroundColor(.red)
                         }
                     }
-                    .padding(.bottom, 43)
+                    .padding(.bottom, 10)
                     
                     HStack {
                         Text("Log messages:")
@@ -99,11 +123,24 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .padding(.bottom, 10)
+                    .onHover { hovering in
+                        isHoveringRerun = hovering
+                    }
+                    .overlay(
+                        ZStack {
+                            if isHoveringRerun {
+                                Text("Rerun on the selected processing units")
+                                    .padding(4)
+                                    .frame(width: 200, height: 60)
+                                    .offset(x: +103)
+                            }
+                        }
+                    )
+                    //.padding(.bottom, 10)
                 }
                 .padding([.horizontal, .bottom, .top])
             }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 310, max: 450)
+            .navigationSplitViewColumnWidth(min: 275, ideal: 310, max: 450)
             //.background(colorScheme == .light ? Color(white: 0.9) : Color(NSColor.windowBackgroundColor))
             
         } detail: {
@@ -207,7 +244,7 @@ struct ContentView: View {
                         }
                         .padding(3)
                     }
-                    .frame(minHeight: 600)
+                    .frame(minHeight: 500)
                         
                     Button(action: exportToJson) {
                         Text("Export to JSON file")

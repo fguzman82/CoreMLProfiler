@@ -37,7 +37,7 @@ class CoreMLProcessor: ObservableObject {
         }
 
         guard modelPath.hasSuffix(".mlpackage") else {
-            throw NSError(domain: "CoreMLProcessor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid file type. The file must have a .mlpackage extension."])
+            throw NSError(domain: "CoreMLProcessor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid file type. Load the CoreML file with .mlpackage extension."])
         }
 
         let packageURL = URL(fileURLWithPath: self.modelPath)
