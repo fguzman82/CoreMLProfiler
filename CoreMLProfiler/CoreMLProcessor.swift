@@ -20,8 +20,10 @@ class CoreMLProcessor: ObservableObject {
     @Published var loadTime: Double = 0.0
     @Published var compileTimes: [Double] = []
     @Published var loadTimes: [Double] = []
+    @Published var predictTimes: [Double] = []
     var modelPath: String = ""
     var processingUnit: Int = 0
+    var fullProfile: Bool = false
     
     private func processingUnitsMap() -> [MLComputeUnits] {
         return [.all, .cpuOnly, .cpuAndGPU, .cpuAndNeuralEngine]
@@ -45,7 +47,7 @@ class CoreMLProcessor: ObservableObject {
         config.computeUnits = processingUnitsMap()[processingUnit]
 
         log("Processing Unit Selected: \(processingUnitDescriptions()[processingUnit])")
-
+        
         let (compiledModelURL, compileTimes) = try await compileModel(at: packageURL)
         DispatchQueue.main.async {
             self.compileTimes = compileTimes
@@ -61,13 +63,26 @@ class CoreMLProcessor: ObservableObject {
         log("Time taken to load model (median): \(loadTimes[loadTimes.count / 2]) ms")
 
         var medianPredictTime: Double = 0.0
+    
+        if fullProfile {
+            // Create dummy input and perform prediction
+            if let dummyInput = createDummyInput(for: model) {
+                let predictTimes = try makePrediction(with: dummyInput, model: model)
+                medianPredictTime = predictTimes[predictTimes.count / 2]
+                log("Time taken to make prediction (median): \(medianPredictTime) ms")
+                DispatchQueue.main.async {
+                    self.predictTimes = predictTimes
+                }
+            }
+        }
+        
         
         if let plan = try await getComputePlan(of: compiledModelURL, configuration: config) {
-            let modelStructure = processModelStructure(plan.modelStructure, plan: plan, medianPredictTime: medianPredictTime, fullProfile: false)
+            let modelStructure = processModelStructure(plan.modelStructure, plan: plan, medianPredictTime: medianPredictTime, fullProfile: fullProfile)
             let jsonData = try JSONSerialization.data(withJSONObject: modelStructure, options: .prettyPrinted)
             
             try saveJSONToFile(jsonData: jsonData, fileName: "compute_plan.json")
-            let counts = try processAndSaveSelectedColumns(from: jsonData, fullProfile: false)
+            let counts = try processAndSaveSelectedColumns(from: jsonData, fullProfile: fullProfile)
             
             return counts
         } else {
@@ -176,7 +191,76 @@ class CoreMLProcessor: ObservableObject {
 
         return (finalModel, loadTimes)
     }
+    
+    private func createDummyInput(for model: MLModel) -> MLFeatureProvider? {
+        let modelDescription = model.modelDescription
 
+        var inputDictionary = [String: MLFeatureValue]()
+
+        for (name, description) in modelDescription.inputDescriptionsByName {
+            switch description.type {
+            case .multiArray:
+                if let multiArrayValue = createDummyMultiArray(from: description.multiArrayConstraint) {
+                    inputDictionary[name] = multiArrayValue
+                } else {
+                    log("Failed to create dummy multi-array for \(name)")
+                    return nil
+                }
+            case .int64:
+                inputDictionary[name] = MLFeatureValue(int64: Int64.random(in: 0..<10))
+            case .double:
+                inputDictionary[name] = MLFeatureValue(double: Double.random(in: 0..<1))
+            case .string:
+                inputDictionary[name] = MLFeatureValue(string: "dummy_string")
+            case .dictionary:
+                if let dictionaryValue = createDummyDictionary(from: description.dictionaryConstraint) {
+                    inputDictionary[name] = dictionaryValue
+                } else {
+                    log("Failed to create dummy dictionary for \(name)")
+                    return nil
+                }
+            case .image:
+                if let pixelBuffer = createDummyPixelBuffer(from: description.imageConstraint) {
+                    inputDictionary[name] = MLFeatureValue(pixelBuffer: pixelBuffer)
+                } else {
+                    log("Failed to create dummy pixel buffer for \(name)")
+                    return nil
+                }
+            case .sequence:
+                if let sequenceValue = createDummySequence(from: description.sequenceConstraint) {
+                    inputDictionary[name] = sequenceValue
+                } else {
+                    log("Failed to create dummy sequence for \(name)")
+                    return nil
+                }
+            default:
+                log("Unsupported input type for \(name)")
+                return nil
+            }
+        }
+
+        return try? MLDictionaryFeatureProvider(dictionary: inputDictionary)
+    }
+
+    private func makePrediction(with input: MLFeatureProvider, model: MLModel) throws -> [Double] {
+        var predictTimes: [Double] = []
+
+        for _ in 1...10 {
+            let predictStartTime = DispatchTime.now()
+            let _ = try model.prediction(from: input)
+            let predictEndTime = DispatchTime.now()
+            let predictNanoTime = predictEndTime.uptimeNanoseconds - predictStartTime.uptimeNanoseconds
+            let predictTimeInterval = Double(predictNanoTime) / 1_000_000
+            predictTimes.append(predictTimeInterval)
+        }
+
+        predictTimes.sort()
+        
+        log("Prediction times: \(predictTimes) ms")
+
+        return predictTimes
+    }
+    
     private func getComputePlan(of modelURL: URL, configuration: MLModelConfiguration) async throws -> MLComputePlan? {
         return try await MLComputePlan.load(contentsOf: modelURL, configuration: configuration)
     }
@@ -240,6 +324,11 @@ class CoreMLProcessor: ObservableObject {
         operationStructure["cost"] = cost
         operationStructure["preferred_device"] = mapDeviceUsage(deviceUsage?.preferred)
         operationStructure["supported_devices"] = deviceUsage?.supported.map { mapDeviceUsage($0) }.joined(separator: ", ")
+        if fullProfile {
+            operationStructure["start_time"] = startTime
+            operationStructure["end_time"] = endTime
+            operationStructure["op_time"] = endTime - startTime
+        }
                 
         return operationStructure
     }
@@ -321,8 +410,14 @@ class CoreMLProcessor: ObservableObject {
         let operationsData = try JSONSerialization.data(withJSONObject: operations, options: [])
         let dataFrame = try DataFrame(jsonData: operationsData)
 
+        // Select the columns
         let selectedDataFrame: DataFrame
-        selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operatorName", "cost", "preferred_device", "supported_devices")
+        
+        if fullProfile {
+            selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operatorName", "cost", "preferred_device", "supported_devices", "start_time", "end_time", "op_time")
+        } else {
+            selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operatorName", "cost", "preferred_device", "supported_devices")
+        }
 
         let totalOp = selectedDataFrame.rows.count
         let preferredDeviceColumn = ColumnID<String>("preferred_device", String.self)
@@ -344,10 +439,101 @@ class CoreMLProcessor: ObservableObject {
         return OperationCounts(totalOp: totalOp, totalCPU: totalCPU, totalGPU: totalGPU, totalANE: totalANE)
     }
 
-
     private func log(_ message: String) {
         DispatchQueue.main.async {
             self.consoleOutput += message + "\n"
+        }
+    }
+    
+    private func createDummyMultiArray(from constraint: MLMultiArrayConstraint?) -> MLFeatureValue? {
+        guard let constraint = constraint else { return nil }
+        let shape = constraint.shape
+        let dataType = constraint.dataType
+        let multiArray: MLMultiArray
+        do {
+            multiArray = try MLMultiArray(shape: shape as [NSNumber], dataType: dataType)
+            for i in 0..<multiArray.count {
+                switch dataType {
+                case .double:
+                    multiArray[i] = NSNumber(value: Double.random(in: 0..<1))
+                case .float32:
+                    multiArray[i] = NSNumber(value: Float.random(in: 0..<1))
+                case .int32:
+                    multiArray[i] = NSNumber(value: Int32.random(in: 0..<10))
+                default:
+                    break
+                }
+            }
+            return MLFeatureValue(multiArray: multiArray)
+        } catch {
+            log("Failed to create MLMultiArray: \(error)")
+            return nil
+        }
+    }
+
+    private func createDummyPixelBuffer(from constraint: MLImageConstraint?) -> CVPixelBuffer? {
+        guard let constraint = constraint else { return nil }
+        let width = constraint.pixelsWide
+        let height = constraint.pixelsHigh
+        let attributes: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+        var pixelBuffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32ARGB, attributes as CFDictionary, &pixelBuffer)
+        guard status == kCVReturnSuccess else {
+            log("Failed to create pixel buffer")
+            return nil
+        }
+        CVPixelBufferLockBaseAddress(pixelBuffer!, [])
+        let pixelData = CVPixelBufferGetBaseAddress(pixelBuffer!)
+        
+        let colorValue: UInt32 = 0xFFFF0000 // ARGB value for red color
+        let pixelBufferBaseAddress = pixelData?.assumingMemoryBound(to: UInt32.self)
+        for y in 0..<height {
+            for x in 0..<width {
+                pixelBufferBaseAddress?[y * width + x] = colorValue
+            }
+        }
+        
+        CVPixelBufferUnlockBaseAddress(pixelBuffer!, [])
+        return pixelBuffer
+    }
+
+    private func createDummyDictionary(from constraint: MLDictionaryConstraint?) -> MLFeatureValue? {
+        guard let constraint = constraint else { return nil }
+
+        switch constraint.keyType {
+        case .string:
+            let dict: [String: NSNumber] = ["key": NSNumber(value: Double.random(in: 0..<1))]
+            return try? MLFeatureValue(dictionary: dict)
+        case .int64:
+            let dict: [NSNumber: NSNumber] = [NSNumber(value: Int64.random(in: 0..<10)): NSNumber(value: Double.random(in: 0..<1))]
+            return try? MLFeatureValue(dictionary: dict)
+        default:
+            log("Unsupported dictionary key type")
+            return nil
+        }
+    }
+
+    private func createDummySequence(from constraint: MLSequenceConstraint?) -> MLFeatureValue? {
+        guard let constraint = constraint else { return nil }
+        let countRange = constraint.countRange
+        let length = Int.random(in: countRange.lowerBound..<countRange.upperBound)
+
+        switch constraint.valueDescription.type {
+        case .int64:
+            let sequence = (0..<length).map { _ in NSNumber(value: Int64.random(in: 0..<10)) }
+            return MLFeatureValue(sequence: MLSequence(int64s: sequence))
+        case .double:
+            let sequence = (0..<length).map { _ in NSNumber(value: Double.random(in: 0..<1)) }
+            return MLFeatureValue(sequence: MLSequence(int64s: sequence))
+        case .string:
+            let sequence = (0..<length).map { _ in "dummy_string" }
+            return MLFeatureValue(sequence: MLSequence(strings: sequence))
+        default:
+            log("Unsupported sequence type")
+            return nil
         }
     }
 }

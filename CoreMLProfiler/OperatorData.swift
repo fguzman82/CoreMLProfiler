@@ -14,5 +14,8 @@ struct OperatorData: Codable, Identifiable {
     let cost: Double
     let preferred_device: String
     let supported_devices: String
+    let start_time: Double?
+    let end_time: Double?
+    let op_time: Double?
 }
 

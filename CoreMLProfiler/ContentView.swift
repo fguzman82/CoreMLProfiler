@@ -21,12 +21,17 @@ struct ContentView: View {
     @State private var operatorData: [OperatorData] = []
     @State private var sortOrder: [KeyPathComparator<OperatorData>] = [
         .init(\.op_number, order: .forward),
-        .init(\.cost, order: .forward)
+        .init(\.cost, order: .forward),
+        .init(\.operatorName, order: .forward),
+        .init(\.preferred_device, order: .forward),
+        .init(\.supported_devices, order: .forward),
+        
     ]
     @State private var processingUnit: String = "all"
     @ObservedObject private var processor = CoreMLProcessor.shared
     @State private var compileTime: String = ""
     @State private var loadTime: String = ""
+    @State private var predictTime: String = ""
     @State private var isLoading: Bool = false
     @State private var totalOp: Int = 0
     @State private var totalCPU: Int = 0
@@ -34,11 +39,14 @@ struct ContentView: View {
     @State private var totalANE: Int = 0
     @State private var compileTimeOption: String = "Median"
     @State private var loadTimeOption: String = "Median"
-    @State private var compileTimes: [Double] = []
-    @State private var loadTimes: [Double] = []
+    @State private var predictTimeOption: String = "Median"
+    @State private var compileTimes: [Double] = Array(repeating: 0.0, count: 10)
+    @State private var loadTimes: [Double] = Array(repeating: 0.0, count: 10)
+    @State private var predictTimes: [Double] = Array(repeating: 0.0, count: 10)
     @State private var full: Bool = false
     @State private var isHoveringLoad = false
     @State private var isHoveringRerun = false
+    @State private var viewID = UUID()
 
     @Environment(\.colorScheme) var colorScheme
 
@@ -49,6 +57,9 @@ struct ContentView: View {
                     HStack {
                         Toggle(isOn: $full) {
                             Text("Enable Full Profile (Beta)")
+                        }
+                        .onChange(of: full) {
+                            viewID = UUID()
                         }
                         Spacer()
                     }.padding(.bottom)
@@ -166,31 +177,32 @@ struct ContentView: View {
                     }
                     
                     HStack {
-                        VStack() {
-                            HStack {
-                                Text("Compilation")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(.secondary)
-                                    .padding(.bottom, 2)
+                        if full {
+                            VStack() {
+                                HStack {
+                                    Text("Prediction")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                        .padding(.bottom, 2)
+                                    
+                                    Picker("", selection: $predictTimeOption) {
+                                        Text("Average").tag("Average")
+                                        Text("Median").tag("Median")
+                                    }
+                                    .frame(width: 100)
+                                    .onChange(of: predictTimeOption) {
+                                        predictTime = calculateTime(option: predictTimeOption, times: predictTimes)
+                                    }
+                                }
+                                Text(predictTime)
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.primary)
+                                    .padding(.bottom, 5)
                                 
-                                Picker("", selection: $compileTimeOption) {
-                                    Text("Average").tag("Average")
-                                    Text("Median").tag("Median")
-                                }
-                                .frame(width: 100)
-                                .onChange(of: compileTimeOption) {
-                                    compileTime = calculateTime(option: compileTimeOption, times: compileTimes)
-                                }
                             }
-                            Text(compileTime)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.primary)
-                                .padding(.bottom, 5)
-                            
-                            
+                            .padding(.trailing, 50)
                         }
-                        .padding(.trailing, 50)
-                        
+ 
                         VStack() {
                             HStack {
                                 Text("Load")
@@ -213,15 +225,38 @@ struct ContentView: View {
                                 .padding(.bottom, 5)
                             
                         }
+                        .padding(.trailing, 50)
+                        
+                        VStack() {
+                            HStack {
+                                Text("Compilation")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                    .padding(.bottom, 2)
+                                
+                                Picker("", selection: $compileTimeOption) {
+                                    Text("Average").tag("Average")
+                                    Text("Median").tag("Median")
+                                }
+                                .frame(width: 100)
+                                .onChange(of: compileTimeOption) {
+                                    compileTime = calculateTime(option: compileTimeOption, times: compileTimes)
+                                }
+                            }
+                            Text(compileTime)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.primary)
+                                .padding(.bottom, 5)
+                        }
                     }
 //                    .padding(.bottom, 10)
-                    
                     HStack (alignment: .center){
                         Table(operatorData, sortOrder: $sortOrder) {
-                            TableColumn("Op Number", value: \.op_number) { data in
+                            TableColumn("Op #", value: \.op_number) { data in
                                 Text("\(data.op_number)")
                             }
-                            TableColumn("Operator Name") { data in
+                            .width(ideal: 30)
+                            TableColumn("Operator Name", value: \.operatorName) { data in
                                 Text(data.operatorName)
                             }
                             TableColumn("Cost", value: \.cost) { data in
@@ -229,13 +264,32 @@ struct ContentView: View {
                                     .frame(height: 20)
                             }
                             .width(min: 100)
-                            TableColumn("Preferred Device") { data in
-                                Text(data.preferred_device)
+                            
+                            if full {
+                                TableColumn("Start Time (ms)") { data in
+                                    Text("\(data.start_time ?? 0.0, specifier: "%.3f")")
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                                TableColumn("End Time (ms)") { data in
+                                    Text("\(data.end_time ?? 0.0, specifier: "%.3f")")
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                                TableColumn("Op Time (ms)") { data in
+                                    Text("\(data.op_time ?? 0.0, specifier: "%.3f")")
+                                        .foregroundColor(colorScheme == .dark ? .green : .blue)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
                             }
-                            TableColumn("Supported Devices") { data in
+                            
+                            TableColumn("Preferred Device", value: \.preferred_device) { data in
+                                Text(data.preferred_device)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            TableColumn("Supported Devices", value: \.supported_devices) { data in
                                 Text(data.supported_devices)
                             }
                         }
+                        .id(viewID)
                         .onChange(of: sortOrder) {
                             operatorData.sort(using: sortOrder)
                         }
@@ -250,7 +304,6 @@ struct ContentView: View {
                         Text("Export to JSON file")
                     }
                     .padding(.bottom)
-                
 
                 }
                 .frame(minWidth: 880) // VStack
@@ -303,6 +356,7 @@ struct ContentView: View {
     
     private func rerun() {
         CoreMLProcessor.shared.processingUnit = mapProcessingUnit()
+        CoreMLProcessor.shared.fullProfile = full
         Task {
             do {
                 isLoading = true
@@ -313,8 +367,16 @@ struct ContentView: View {
                     compileTimes = CoreMLProcessor.shared.compileTimes
                     loadTimes = CoreMLProcessor.shared.loadTimes
                     
+                    if full {
+                        predictTimes = CoreMLProcessor.shared.predictTimes
+                    }
+                    
                     compileTime = calculateTime(option: compileTimeOption, times: compileTimes)
                     loadTime = calculateTime(option: loadTimeOption, times: loadTimes)
+                    
+                    if full {
+                        predictTime = calculateTime(option: predictTimeOption, times: predictTimes)
+                    }
                     
                     totalOp = counts.totalOp
                     totalCPU = counts.totalCPU
