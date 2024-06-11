@@ -18,7 +18,7 @@ class CoreMLProcessor: ObservableObject {
     @Published var consoleOutput: String = ""
     @Published var compileTime: Double = 0.0
     @Published var loadTime: Double = 0.0
-    @Published var compileTimes: [Double] = []
+    @Published var compileTimes: [Double] = Array(repeating: 0.0, count: 10)
     @Published var loadTimes: [Double] = []
     @Published var predictTimes: [Double] = []
     var modelPath: String = ""
@@ -33,50 +33,118 @@ class CoreMLProcessor: ObservableObject {
         return ["all", "cpuOnly", "cpuAndGPU", "cpuAndNeuralEngine"]
     }
 
+//    public func run() async throws -> OperationCounts {
+//        guard (0...3).contains(processingUnit) else {
+//            throw NSError(domain: "CoreMLProcessor", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid processing unit value. Must be between 0 and 3."])
+//        }
+//
+//        guard modelPath.hasSuffix(".mlpackage") else {
+//            throw NSError(domain: "CoreMLProcessor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid file type. Load the CoreML file with .mlpackage extension."])
+//        }
+//
+//        let packageURL = URL(fileURLWithPath: self.modelPath)
+//        let config = MLModelConfiguration()
+//        config.computeUnits = processingUnitsMap()[processingUnit]
+//
+//        log("Processing Unit Selected: \(processingUnitDescriptions()[processingUnit])")
+//        
+//        let (compiledModelURL, compileTimes) = try await compileModel(at: packageURL)
+//        DispatchQueue.main.async {
+//            self.compileTimes = compileTimes
+//            self.compileTime = compileTimes[compileTimes.count / 2] // Default to median
+//        }
+//        log("Time taken to compile model (median): \(compileTimes[compileTimes.count / 2]) ms")
+//
+//        let (model, loadTimes) = try await loadModel(at: compiledModelURL, configuration: config)
+//        DispatchQueue.main.async {
+//            self.loadTimes = loadTimes
+//            self.loadTime = loadTimes[loadTimes.count / 2] // Default to median
+//        }
+//        log("Time taken to load model (median): \(loadTimes[loadTimes.count / 2]) ms")
+//
+//        var medianPredictTime: Double = 0.0
+//    
+//        if fullProfile {
+//            // Create dummy input and perform prediction
+//            if let dummyInput = createDummyInput(for: model) {
+//                let predictTimes = try makePrediction(with: dummyInput, model: model)
+//                medianPredictTime = predictTimes[predictTimes.count / 2]
+//                log("Time taken to make prediction (median): \(medianPredictTime) ms")
+//                DispatchQueue.main.async {
+//                    self.predictTimes = predictTimes
+//                }
+//            }
+//        }
+//                
+//        if let plan = try await getComputePlan(of: compiledModelURL, configuration: config) {
+//            let modelStructure = processModelStructure(plan.modelStructure, plan: plan, medianPredictTime: medianPredictTime, fullProfile: fullProfile)
+//            let jsonData = try JSONSerialization.data(withJSONObject: modelStructure, options: .prettyPrinted)
+//            
+//            try saveJSONToFile(jsonData: jsonData, fileName: "compute_plan.json")
+//            let counts = try processAndSaveSelectedColumns(from: jsonData, fullProfile: fullProfile)
+//            
+//            return counts
+//        } else {
+//            log("Failed to load the compute plan.")
+//            return OperationCounts(totalOp: 0, totalCPU: 0, totalGPU: 0, totalANE: 0)
+//        }
+//    }
     public func run() async throws -> OperationCounts {
         guard (0...3).contains(processingUnit) else {
             throw NSError(domain: "CoreMLProcessor", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid processing unit value. Must be between 0 and 3."])
         }
 
-        guard modelPath.hasSuffix(".mlpackage") else {
-            throw NSError(domain: "CoreMLProcessor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid file type. Load the CoreML file with .mlpackage extension."])
+        guard modelPath.hasSuffix(".mlpackage") || modelPath.hasSuffix(".mlmodelc") else {
+            throw NSError(domain: "CoreMLProcessor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid file type. Load the CoreML file with .mlpackage or .mlmodelc extension."])
         }
 
         let packageURL = URL(fileURLWithPath: self.modelPath)
         let config = MLModelConfiguration()
         config.computeUnits = processingUnitsMap()[processingUnit]
 
-        log("Processing Unit Selected: \(processingUnitDescriptions()[processingUnit])")
-        
-        let (compiledModelURL, compileTimes) = try await compileModel(at: packageURL)
-        DispatchQueue.main.async {
-            self.compileTimes = compileTimes
-            self.compileTime = compileTimes[compileTimes.count / 2] // Default to median
-        }
-        log("Time taken to compile model (median): \(compileTimes[compileTimes.count / 2]) ms")
+        log("\nProcessing Unit Selected: \(processingUnitDescriptions()[processingUnit])\n")
 
+        var compiledModelURL = packageURL
+//        compileTimes = Array(repeating: 0.0, count: 10)
+        DispatchQueue.main.async {
+            self.compileTimes = Array(repeating: 0.0, count: 10)
+        }
+        
+        if modelPath.hasSuffix(".mlpackage") {
+            let compileResult = try await compileModel(at: packageURL)
+            compiledModelURL = compileResult.0
+            let compileTimes = compileResult.1
+            let medianCompileTime = compileTimes[compileTimes.count / 2]
+
+            DispatchQueue.main.async {
+                self.compileTimes = compileTimes
+                self.compileTime = medianCompileTime // Default to median
+            }
+
+            log("Time taken to compile model (median): \(medianCompileTime) ms\n")
+        }
+        
         let (model, loadTimes) = try await loadModel(at: compiledModelURL, configuration: config)
         DispatchQueue.main.async {
             self.loadTimes = loadTimes
             self.loadTime = loadTimes[loadTimes.count / 2] // Default to median
         }
-        log("Time taken to load model (median): \(loadTimes[loadTimes.count / 2]) ms")
+        log("Time taken to load model (median): \(loadTimes[loadTimes.count / 2]) ms\n")
 
         var medianPredictTime: Double = 0.0
-    
+
         if fullProfile {
             // Create dummy input and perform prediction
             if let dummyInput = createDummyInput(for: model) {
                 let predictTimes = try makePrediction(with: dummyInput, model: model)
                 medianPredictTime = predictTimes[predictTimes.count / 2]
-                log("Time taken to make prediction (median): \(medianPredictTime) ms")
+                log("Time taken to make prediction (median): \(medianPredictTime) ms\n")
                 DispatchQueue.main.async {
                     self.predictTimes = predictTimes
                 }
             }
         }
-        
-        
+
         if let plan = try await getComputePlan(of: compiledModelURL, configuration: config) {
             let modelStructure = processModelStructure(plan.modelStructure, plan: plan, medianPredictTime: medianPredictTime, fullProfile: fullProfile)
             let jsonData = try JSONSerialization.data(withJSONObject: modelStructure, options: .prettyPrinted)
@@ -86,38 +154,13 @@ class CoreMLProcessor: ObservableObject {
             
             return counts
         } else {
-            log("Failed to load the compute plan.")
+            log("Failed to load the compute plan.\n")
             return OperationCounts(totalOp: 0, totalCPU: 0, totalGPU: 0, totalANE: 0)
         }
     }
+
     
 
-//    private func compileModel(at packageURL: URL) async throws -> (URL, Double) {
-//        var compileTimes: [Double] = []
-//        var compiledModelURL: URL?
-//
-//        for _ in 1...10 {
-//            let compileStartTime = DispatchTime.now()
-//            let tempCompiledModelURL = try await MLModel.compileModel(at: packageURL)
-//            let compileEndTime = DispatchTime.now()
-//            let compileNanoTime = compileEndTime.uptimeNanoseconds - compileStartTime.uptimeNanoseconds
-//            let compileTimeInterval = Double(compileNanoTime) / 1_000_000
-//            compileTimes.append(compileTimeInterval)
-//            compiledModelURL = tempCompiledModelURL
-//        }
-//
-//        guard let finalCompiledModelURL = compiledModelURL else {
-//            throw NSError(domain: "CoreMLProcessor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to compile model."])
-//        }
-//
-//        compileTimes.sort()
-//        let medianCompileTime = compileTimes[compileTimes.count / 2]
-//
-//        log("Model compiled successfully at \(finalCompiledModelURL)")
-//        log("Compilation times: \(compileTimes) ms")
-//
-//        return (finalCompiledModelURL, medianCompileTime)
-//    }
     private func compileModel(at packageURL: URL) async throws -> (URL, [Double]) {
         var compileTimes: [Double] = []
         var compiledModelURL: URL?
@@ -137,37 +180,12 @@ class CoreMLProcessor: ObservableObject {
         }
 
         compileTimes.sort()
-        log("Model compiled successfully at \(finalCompiledModelURL)")
-        log("Compilation times: \(compileTimes) ms")
+        log("Model compiled successfully at \(finalCompiledModelURL)\n")
+        log("Compilation times:\n\(compileTimes) ms\n")
 
         return (finalCompiledModelURL, compileTimes)
     }
 
-//    private func loadModel(at compiledModelURL: URL, configuration: MLModelConfiguration) async throws -> (MLModel, Double) {
-//        var loadTimes: [Double] = []
-//        var model: MLModel?
-//
-//        for _ in 1...10 {
-//            let loadStartTime = DispatchTime.now()
-//            let tempModel = try await MLModel.load(contentsOf: compiledModelURL, configuration: configuration)
-//            let loadEndTime = DispatchTime.now()
-//            let loadNanoTime = loadEndTime.uptimeNanoseconds - loadStartTime.uptimeNanoseconds
-//            let loadTimeInterval = Double(loadNanoTime) / 1_000_000
-//            loadTimes.append(loadTimeInterval)
-//            model = tempModel
-//        }
-//
-//        guard let finalModel = model else {
-//            throw NSError(domain: "CoreMLProcessor", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to load model."])
-//        }
-//
-//        loadTimes.sort()
-//        let medianLoadTime = loadTimes[loadTimes.count / 2]
-//
-//        log("Load times: \(loadTimes) ms")
-//
-//        return (finalModel, medianLoadTime)
-//    }
     private func loadModel(at compiledModelURL: URL, configuration: MLModelConfiguration) async throws -> (MLModel, [Double]) {
         var loadTimes: [Double] = []
         var model: MLModel?
@@ -187,7 +205,7 @@ class CoreMLProcessor: ObservableObject {
         }
 
         loadTimes.sort()
-        log("Load times: \(loadTimes) ms")
+        log("Load times:\n \(loadTimes) ms\n")
 
         return (finalModel, loadTimes)
     }
@@ -198,6 +216,7 @@ class CoreMLProcessor: ObservableObject {
         var inputDictionary = [String: MLFeatureValue]()
 
         for (name, description) in modelDescription.inputDescriptionsByName {
+            log("\n\n [Prediction] Creating dummy input for \(description) ... \n")
             switch description.type {
             case .multiArray:
                 if let multiArrayValue = createDummyMultiArray(from: description.multiArrayConstraint) {
@@ -365,32 +384,6 @@ class CoreMLProcessor: ObservableObject {
         }
     }
 
-//    private func processAndSaveSelectedColumns(from jsonData: Data, fullProfile: Bool) throws {
-//        let json = try JSONSerialization.jsonObject(with: jsonData, options: [])
-//        guard let jsonDict = json as? [String: Any],
-//            let main = jsonDict["main"] as? [String: Any],
-//            let block = main["block"] as? [String: Any],
-//            let operations = block["operations"] as? [[String: Any]] else {
-//            throw NSError(domain: "CoreMLProcessor", code: 3, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON structure."])
-//        }
-//
-//        let operationsData = try JSONSerialization.data(withJSONObject: operations, options: [])
-//        let dataFrame = try DataFrame(jsonData: operationsData)
-//
-//        let selectedDataFrame: DataFrame
-//        selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operatorName", "cost", "preferred_device", "supported_devices")
-//
-//        var options = JSONWritingOptions()
-//        options.prettyPrint = true
-//
-//        let fileManager = FileManager.default
-//        let currentPath = fileManager.currentDirectoryPath
-//        let filePath = URL(fileURLWithPath: currentPath).appendingPathComponent("compute_plan_operation_table.json")
-//
-//        try selectedDataFrame.writeJSON(to: filePath, options: options)
-//
-//        log("JSON saved to \(filePath.path)")
-//    }
     struct OperationCounts {
         var totalOp: Int
         var totalCPU: Int

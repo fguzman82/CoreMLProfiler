@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 
 extension UTType {
     static let mlpackage = UTType(importedAs: "com.apple.coreml.mlpackage")
+    static let mlmodelc = UTType(importedAs: "com.apple.coreml.mlmodelc")
     static let json = UTType(importedAs: "public.json")
 }
 
@@ -25,7 +26,6 @@ struct ContentView: View {
         .init(\.operatorName, order: .forward),
         .init(\.preferred_device, order: .forward),
         .init(\.supported_devices, order: .forward),
-        
     ]
     @State private var processingUnit: String = "all"
     @ObservedObject private var processor = CoreMLProcessor.shared
@@ -43,7 +43,7 @@ struct ContentView: View {
     @State private var compileTimes: [Double] = Array(repeating: 0.0, count: 10)
     @State private var loadTimes: [Double] = Array(repeating: 0.0, count: 10)
     @State private var predictTimes: [Double] = Array(repeating: 0.0, count: 10)
-    @State private var full: Bool = false
+    @State private var full: Bool = true
     @State private var isHoveringLoad = false
     @State private var isHoveringRerun = false
     @State private var viewID = UUID()
@@ -90,13 +90,13 @@ struct ContentView: View {
                         .overlay(
                             ZStack {
                                 if isHoveringLoad {
-                                    Text("Load CoreML Package")
+                                    Text("Package .mlpackage or Compiled .mlmodelc files")
                                         .padding(4)
-                                        //.background(Color.gray)
-                                        //.foregroundColor(.white)
-                                        //.cornerRadius(5)
-                                        .frame(width: 200, height: 20)
-                                        .offset(x: +100)
+//                                        .background(Color.gray)
+//                                        .foregroundColor(.white)
+//                                        .cornerRadius(5)
+                                        .frame(width: 180, height: 80)
+                                        .offset(x: +110)
                                 }
                             }
                         )
@@ -128,6 +128,7 @@ struct ContentView: View {
                         .frame(height: 400)
                         .border(Color.gray, width: 1)
                         .padding(.bottom, 10)
+                        .font(.system(size: 13))
                     
                     Button(action: rerun) {
                         Text("Rerun")
@@ -243,8 +244,8 @@ struct ContentView: View {
                                     compileTime = calculateTime(option: compileTimeOption, times: compileTimes)
                                 }
                             }
-                            Text(compileTime)
-                                .font(.system(size: 24, weight: .bold))
+                            Text(compileTime == "0.000 ms" ? "The source file is already compiled" : compileTime)
+                                .font(.system(size: compileTime == "0.000 ms" ? 16 : 24, weight: .bold))
                                 .foregroundColor(.primary)
                                 .padding(.bottom, 5)
                         }
@@ -341,7 +342,7 @@ struct ContentView: View {
         panel.allowsMultipleSelection = false
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.mlpackage]
+        panel.allowedContentTypes = [.mlpackage, .mlmodelc]
 
         if panel.runModal() == .OK {
             if let url = panel.url {
@@ -357,6 +358,7 @@ struct ContentView: View {
     private func rerun() {
         CoreMLProcessor.shared.processingUnit = mapProcessingUnit()
         CoreMLProcessor.shared.fullProfile = full
+//        compileTimes = Array(repeating: 0.0, count: 10)
         Task {
             do {
                 isLoading = true

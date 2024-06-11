@@ -1,61 +1,61 @@
 {
   "images" : [
     {
-      "filename" : "app_icon-16.png",
+      "filename" : "appicon_v5-16.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
     },
     {
-      "filename" : "app_icon-32 1.png",
+      "filename" : "appicon_v5-32.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
     },
     {
-      "filename" : "app_icon-32.png",
+      "filename" : "appicon_v5-32 1.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "32x32"
     },
     {
-      "filename" : "app_icon-64.png",
+      "filename" : "appicon_v5-64.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
     },
     {
-      "filename" : "app_icon-128.png",
+      "filename" : "appicon_v5-128.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
     },
     {
-      "filename" : "app_icon-256 1.png",
+      "filename" : "appicon_v5-256.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
     },
     {
-      "filename" : "app_icon-256.png",
+      "filename" : "appicon_v5-256 1.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
     },
     {
-      "filename" : "app_icon-512 1.png",
+      "filename" : "appicon_v5-512 1.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
     },
     {
-      "filename" : "app_icon-512.png",
+      "filename" : "appicon_v5-512.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
     },
     {
-      "filename" : "app_icon-1024.png",
+      "filename" : "appicon_v5-1024.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"
