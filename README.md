@@ -6,7 +6,7 @@
 
 ## Overview
 
-CoreMLProfiler is a macOS application designed to profile the performance of CoreML models. It provides detailed insights into the compilation, loading, and prediction times of models, supporting both `.mlpackage` and `.mlmodelc` file formats. The application allows users to select different compute units and visualize the performance metrics through an intuitive interface.
+CoreMLProfiler is a macOS application designed to profile CoreML models. **It provides detailed estimates for each operation's time**, allowing users to view and filter results in a table. The application supports both `.mlpackage` and `.mlmodelc` formats and offers comprehensive insights into compilation, loading, and prediction times. Users can select different compute units and visualize performance metrics through an intuitive interface, with comprehensive statistics on all aspects of model profiling.
 
 ## Features
 
@@ -64,7 +64,7 @@ If you want to build the project, follow these steps (requires Xcode 15.2 or lat
 
 ## Models
 
-You can test CoreMLProfiler with your own models or download models from the CoreML community on HuggingFace. [here](https://huggingface.co/coreml-community).
+You can test CoreMLProfiler with your own models or download models from the CoreML community on Hugging Face. [here](https://huggingface.co/coreml-community).
 
 ## CoreML Profiler Details
 
