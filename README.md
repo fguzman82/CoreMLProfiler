@@ -68,7 +68,7 @@ You can test CoreMLProfiler with your own models or download models from the Cor
 
 ## CoreML Profiler Details
 
-The heart of CoreML Profiler consists of two main components: 1) utilizing the MLComputePlan() class from the CoreML Framework, which allows the extraction of costs for each operation of the model, and 2) a prediction function that uses a dummy input, automatically created according to the data structure reported in the CoreML Package.
+The heart of CoreML Profiler consists of two main components: 1) utilizing the `MLComputePlan()` class from the CoreML Framework, which allows the extraction of costs for each operation of the model, and 2) a prediction function that uses a dummy input, automatically created according to the data structure reported in the CoreML Package.
 
 ### Supported Structures
 Here are the data structures that can be automatically generated as dummy inputs to test the prediction function and estimate prediction times:
@@ -83,7 +83,7 @@ Here are the data structures that can be automatically generated as dummy inputs
 
 ### Operation Details of the Profiler
 
-The selected mlpackage file is first compiled to generate the compiled mlmodelc model. Then, `loadModel` is executed with the selected processing units (CPU, GPU, Neural Engine). The input types supported by the model are inspected to launch the `createDummyInput` function, which emulates random data according to the input type. With this input, the model prediction is executed to estimate prediction times and compute the duration of each operation extracted from MLComputePlan.
+The selected mlpackage file is first compiled to generate the compiled mlmodelc model. Then, `loadModel` is executed with the selected processing units (CPU, GPU, Neural Engine). The input types supported by the model are inspected to launch the `createDummyInput` function, which emulates random data according to the input type. With this input, the model prediction is executed to estimate prediction times and compute the duration of each operation extracted from `MLComputePlan()`.
 
 The compilation, load, and predict processes are repeated several times to collect statistics on the times to report them in the profile visualization.
 
