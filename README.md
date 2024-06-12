@@ -38,7 +38,7 @@ If you want to build the project, follow these steps (requires Xcode 15.2 or lat
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/CoreMLProfiler.git
+    git clone https://github.com/fguzman82/CoreMLProfiler
     ```
 
 2. Open the project in Xcode:
