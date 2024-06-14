@@ -1,12 +1,12 @@
-<p align="center">
-<img width="1274" alt="App_screenshot" src="https://github.com/fguzman82/CoreMLProfiler/assets/34175524/9818741e-752c-4736-950f-d3b30ac1613c">
-</p>
-
 # CoreMLProfiler
+
+<p align="center">
+<img width="1274" alt="App_screenshot" src="https://github.com/fguzman82/CoreMLProfiler/assets/34175524/ce92bada-9736-4c30-b3e9-7880de36adca">
+</p>
 
 ## Overview
 
-CoreMLProfiler is a macOS application designed to profile the performance of CoreML models. It provides detailed insights into the compilation, loading, and prediction times of models, supporting both `.mlpackage` and `.mlmodelc` file formats. The application allows users to select different compute units and visualize the performance metrics through an intuitive interface.
+CoreMLProfiler is a macOS application designed to profile CoreML models. **It provides detailed estimates for each operation's time**, allowing users to view and filter results in a table. The application supports both `.mlpackage` and `.mlmodelc` formats and offers comprehensive insights into compilation, loading, and prediction times. Users can select different compute units and visualize performance metrics through an intuitive interface, with comprehensive statistics on all aspects of model profiling.
 
 ## Features
 
@@ -38,7 +38,7 @@ If you want to build the project, follow these steps (requires Xcode 15.2 or lat
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/CoreMLProfiler.git
+    git clone https://github.com/fguzman82/CoreMLProfiler
     ```
 
 2. Open the project in Xcode:
@@ -64,11 +64,11 @@ If you want to build the project, follow these steps (requires Xcode 15.2 or lat
 
 ## Models
 
-You can test CoreMLProfiler with your own models or download models from the CoreML community on HuggingFace. [here](https://huggingface.co/coreml-community).
+You can test CoreMLProfiler with your own models or download models from the CoreML community on Hugging Face. [here](https://huggingface.co/coreml-community).
 
 ## CoreML Profiler Details
 
-The heart of CoreML Profiler consists of two main components: 1) utilizing the MLComputePlan() class from the CoreML Framework, which allows the extraction of costs for each operation of the model, and 2) a prediction function that uses a dummy input, automatically created according to the data structure reported in the CoreML Package.
+The heart of CoreML Profiler consists of two main components: 1) utilizing the `MLComputePlan()` class from the CoreML Framework, which allows the extraction of costs for each operation of the model, and 2) a prediction function that uses a dummy input, automatically created according to the data structure reported in the CoreML Package.
 
 ### Supported Structures
 Here are the data structures that can be automatically generated as dummy inputs to test the prediction function and estimate prediction times:
@@ -83,7 +83,7 @@ Here are the data structures that can be automatically generated as dummy inputs
 
 ### Operation Details of the Profiler
 
-The selected mlpackage file is first compiled to generate the compiled mlmodelc model. Then, `loadModel` is executed with the selected processing units (CPU, GPU, Neural Engine). The input types supported by the model are inspected to launch the `createDummyInput` function, which emulates random data according to the input type. With this input, the model prediction is executed to estimate prediction times and compute the duration of each operation extracted from MLComputePlan.
+The selected mlpackage file is first compiled to generate the compiled mlmodelc model. Then, `loadModel` is executed with the selected processing units (CPU, GPU, Neural Engine). The input types supported by the model are inspected to launch the `createDummyInput` function, which emulates random data according to the input type. With this input, the model prediction is executed to estimate prediction times and compute the duration of each operation extracted from `MLComputePlan()`.
 
 The compilation, load, and predict processes are repeated several times to collect statistics on the times to report them in the profile visualization.
 
