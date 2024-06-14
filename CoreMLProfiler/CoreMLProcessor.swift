@@ -89,7 +89,7 @@ class CoreMLProcessor: ObservableObject {
 //            return OperationCounts(totalOp: 0, totalCPU: 0, totalGPU: 0, totalANE: 0)
 //        }
 //    }
-    public func run() async throws -> OperationCounts {
+    public func run() async throws -> (DataFrame, OperationCounts) {
         guard (0...3).contains(processingUnit) else {
             throw NSError(domain: "CoreMLProcessor", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid processing unit value. Must be between 0 and 3."])
         }
@@ -150,12 +150,12 @@ class CoreMLProcessor: ObservableObject {
             let jsonData = try JSONSerialization.data(withJSONObject: modelStructure, options: .prettyPrinted)
             
             try saveJSONToFile(jsonData: jsonData, fileName: "compute_plan.json")
-            let counts = try processAndSaveSelectedColumns(from: jsonData, fullProfile: fullProfile)
+            let (selectedDataFrame, counts) = try processAndSaveSelectedColumns(from: jsonData, fullProfile: fullProfile)
             
-            return counts
+            return (selectedDataFrame, counts)
         } else {
             log("Failed to load the compute plan.\n")
-            return OperationCounts(totalOp: 0, totalCPU: 0, totalGPU: 0, totalANE: 0)
+            return (DataFrame(), OperationCounts(totalOp: 0, totalCPU: 0, totalGPU: 0, totalANE: 0))
         }
     }
 
@@ -391,7 +391,7 @@ class CoreMLProcessor: ObservableObject {
         var totalANE: Int
     }
 
-    private func processAndSaveSelectedColumns(from jsonData: Data, fullProfile: Bool) throws -> OperationCounts {
+    private func processAndSaveSelectedColumns(from jsonData: Data, fullProfile: Bool) throws -> (DataFrame, OperationCounts) {
         let json = try JSONSerialization.jsonObject(with: jsonData, options: [])
         guard let jsonDict = json as? [String: Any],
               let main = jsonDict["main"] as? [String: Any],
@@ -428,8 +428,10 @@ class CoreMLProcessor: ObservableObject {
         try selectedDataFrame.writeJSON(to: filePath, options: options)
 
         log("JSON saved to \(filePath.path)")
+        
+        let counts = OperationCounts(totalOp: totalOp, totalCPU: totalCPU, totalGPU: totalGPU, totalANE: totalANE)
 
-        return OperationCounts(totalOp: totalOp, totalCPU: totalCPU, totalGPU: totalGPU, totalANE: totalANE)
+        return (selectedDataFrame, counts)
     }
 
     private func log(_ message: String) {

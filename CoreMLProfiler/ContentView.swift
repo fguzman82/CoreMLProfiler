@@ -362,29 +362,40 @@ struct ContentView: View {
         Task {
             do {
                 isLoading = true
-                let counts = try await CoreMLProcessor.shared.run()
-                if let data = try? Data(contentsOf: URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("compute_plan_operation_table.json")),
-                   let decodedData = try? JSONDecoder().decode([OperatorData].self, from: data) {
-                    operatorData = decodedData
-                    compileTimes = CoreMLProcessor.shared.compileTimes
-                    loadTimes = CoreMLProcessor.shared.loadTimes
-                    
-                    if full {
-                        predictTimes = CoreMLProcessor.shared.predictTimes
-                    }
-                    
-                    compileTime = calculateTime(option: compileTimeOption, times: compileTimes)
-                    loadTime = calculateTime(option: loadTimeOption, times: loadTimes)
-                    
-                    if full {
-                        predictTime = calculateTime(option: predictTimeOption, times: predictTimes)
-                    }
-                    
-                    totalOp = counts.totalOp
-                    totalCPU = counts.totalCPU
-                    totalGPU = counts.totalGPU
-                    totalANE = counts.totalANE
+                let (selectedDataFrame, counts) = try await CoreMLProcessor.shared.run()
+                
+                operatorData = selectedDataFrame.rows.map { row in
+                    OperatorData(
+                        op_number: row["op_number"] as? Int ?? 0,
+                        operatorName: row["operatorName"] as? String ?? "",
+                        cost: row["cost"] as? Double ?? 0.0,
+                        preferred_device: row["preferred_device"] as? String ?? "",
+                        supported_devices: row["supported_devices"] as? String ?? "",
+                        start_time: row["start_time"] as? Double,
+                        end_time: row["end_time"] as? Double,
+                        op_time: row["op_time"] as? Double
+                    )
                 }
+                
+                compileTimes = CoreMLProcessor.shared.compileTimes
+                loadTimes = CoreMLProcessor.shared.loadTimes
+                
+                if full {
+                    predictTimes = CoreMLProcessor.shared.predictTimes
+                }
+                
+                compileTime = calculateTime(option: compileTimeOption, times: compileTimes)
+                loadTime = calculateTime(option: loadTimeOption, times: loadTimes)
+                
+                if full {
+                    predictTime = calculateTime(option: predictTimeOption, times: predictTimes)
+                }
+                
+                totalOp = counts.totalOp
+                totalCPU = counts.totalCPU
+                totalGPU = counts.totalGPU
+                totalANE = counts.totalANE
+                
             } catch {
                 processor.consoleOutput += "\n\(error.localizedDescription)"
             }
