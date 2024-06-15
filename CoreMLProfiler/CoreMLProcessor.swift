@@ -33,62 +33,6 @@ class CoreMLProcessor: ObservableObject {
         return ["all", "cpuOnly", "cpuAndGPU", "cpuAndNeuralEngine"]
     }
 
-//    public func run() async throws -> OperationCounts {
-//        guard (0...3).contains(processingUnit) else {
-//            throw NSError(domain: "CoreMLProcessor", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid processing unit value. Must be between 0 and 3."])
-//        }
-//
-//        guard modelPath.hasSuffix(".mlpackage") else {
-//            throw NSError(domain: "CoreMLProcessor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid file type. Load the CoreML file with .mlpackage extension."])
-//        }
-//
-//        let packageURL = URL(fileURLWithPath: self.modelPath)
-//        let config = MLModelConfiguration()
-//        config.computeUnits = processingUnitsMap()[processingUnit]
-//
-//        log("Processing Unit Selected: \(processingUnitDescriptions()[processingUnit])")
-//        
-//        let (compiledModelURL, compileTimes) = try await compileModel(at: packageURL)
-//        DispatchQueue.main.async {
-//            self.compileTimes = compileTimes
-//            self.compileTime = compileTimes[compileTimes.count / 2] // Default to median
-//        }
-//        log("Time taken to compile model (median): \(compileTimes[compileTimes.count / 2]) ms")
-//
-//        let (model, loadTimes) = try await loadModel(at: compiledModelURL, configuration: config)
-//        DispatchQueue.main.async {
-//            self.loadTimes = loadTimes
-//            self.loadTime = loadTimes[loadTimes.count / 2] // Default to median
-//        }
-//        log("Time taken to load model (median): \(loadTimes[loadTimes.count / 2]) ms")
-//
-//        var medianPredictTime: Double = 0.0
-//    
-//        if fullProfile {
-//            // Create dummy input and perform prediction
-//            if let dummyInput = createDummyInput(for: model) {
-//                let predictTimes = try makePrediction(with: dummyInput, model: model)
-//                medianPredictTime = predictTimes[predictTimes.count / 2]
-//                log("Time taken to make prediction (median): \(medianPredictTime) ms")
-//                DispatchQueue.main.async {
-//                    self.predictTimes = predictTimes
-//                }
-//            }
-//        }
-//                
-//        if let plan = try await getComputePlan(of: compiledModelURL, configuration: config) {
-//            let modelStructure = processModelStructure(plan.modelStructure, plan: plan, medianPredictTime: medianPredictTime, fullProfile: fullProfile)
-//            let jsonData = try JSONSerialization.data(withJSONObject: modelStructure, options: .prettyPrinted)
-//            
-//            try saveJSONToFile(jsonData: jsonData, fileName: "compute_plan.json")
-//            let counts = try processAndSaveSelectedColumns(from: jsonData, fullProfile: fullProfile)
-//            
-//            return counts
-//        } else {
-//            log("Failed to load the compute plan.")
-//            return OperationCounts(totalOp: 0, totalCPU: 0, totalGPU: 0, totalANE: 0)
-//        }
-//    }
     public func run() async throws -> (DataFrame, OperationCounts) {
         guard (0...3).contains(processingUnit) else {
             throw NSError(domain: "CoreMLProcessor", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid processing unit value. Must be between 0 and 3."])
@@ -103,7 +47,14 @@ class CoreMLProcessor: ObservableObject {
         config.computeUnits = processingUnitsMap()[processingUnit]
 
         log("\nProcessing Unit Selected: \(processingUnitDescriptions()[processingUnit])\n")
-
+        
+        // Print the current directory path
+        let currentPath = FileManager.default.currentDirectoryPath
+        log("Current directory path: \(currentPath) \n")
+        
+        let additionalPath = currentPath + "/Library/Caches/com.fguzman82.CoreMLProfiler/com.apple.e5rt.e5bundlecache"
+        log("Additional path: \(additionalPath) \n")
+        
         var compiledModelURL = packageURL
 //        compileTimes = Array(repeating: 0.0, count: 10)
         DispatchQueue.main.async {
@@ -150,7 +101,24 @@ class CoreMLProcessor: ObservableObject {
             let jsonData = try JSONSerialization.data(withJSONObject: modelStructure, options: .prettyPrinted)
             
             try saveJSONToFile(jsonData: jsonData, fileName: "compute_plan.json")
-            let (selectedDataFrame, counts) = try processAndSaveSelectedColumns(from: jsonData, fullProfile: fullProfile)
+            var (selectedDataFrame, counts) = try processAndSaveSelectedColumns(from: jsonData, fullProfile: fullProfile)
+            
+            // Find and log the latest analytics.mil file
+            if let latestAnalyticsFile = findLatestAnalyticsFile(in: additionalPath) {
+                log("Latest analytics.mil file: \(latestAnalyticsFile.path)\n")
+                
+                // Decode the analytics.mil file
+                let operations = decodeAnalyticsFile(at: latestAnalyticsFile)
+//                log("Decoded operations: \(operations)\n")
+                
+                // Convert operations to DataFrame
+                let analyticsDataFrame = try convertOperationsToDataFrame(operations: operations)
+                print("Analytics DataFrame: \(analyticsDataFrame)\n")
+                
+                // Copy validation messages to selectedDataFrame
+                copyValidationMessages(from: analyticsDataFrame, to: &selectedDataFrame)
+                print("Consolided DataFrame: \(selectedDataFrame.selecting(columnNames: "validationMessages"))\n")
+            }
             
             return (selectedDataFrame, counts)
         } else {
@@ -158,8 +126,6 @@ class CoreMLProcessor: ObservableObject {
             return (DataFrame(), OperationCounts(totalOp: 0, totalCPU: 0, totalGPU: 0, totalANE: 0))
         }
     }
-
-    
 
     private func compileModel(at packageURL: URL) async throws -> (URL, [Double]) {
         var compileTimes: [Double] = []
@@ -222,7 +188,7 @@ class CoreMLProcessor: ObservableObject {
                 if let multiArrayValue = createDummyMultiArray(from: description.multiArrayConstraint) {
                     inputDictionary[name] = multiArrayValue
                 } else {
-                    log("Failed to create dummy multi-array for \(name)")
+                    log("Failed to create dummy multi-array for \(name)\n")
                     return nil
                 }
             case .int64:
@@ -235,25 +201,25 @@ class CoreMLProcessor: ObservableObject {
                 if let dictionaryValue = createDummyDictionary(from: description.dictionaryConstraint) {
                     inputDictionary[name] = dictionaryValue
                 } else {
-                    log("Failed to create dummy dictionary for \(name)")
+                    log("Failed to create dummy dictionary for \(name)\n")
                     return nil
                 }
             case .image:
                 if let pixelBuffer = createDummyPixelBuffer(from: description.imageConstraint) {
                     inputDictionary[name] = MLFeatureValue(pixelBuffer: pixelBuffer)
                 } else {
-                    log("Failed to create dummy pixel buffer for \(name)")
+                    log("Failed to create dummy pixel buffer for \(name)\n")
                     return nil
                 }
             case .sequence:
                 if let sequenceValue = createDummySequence(from: description.sequenceConstraint) {
                     inputDictionary[name] = sequenceValue
                 } else {
-                    log("Failed to create dummy sequence for \(name)")
+                    log("Failed to create dummy sequence for \(name)\n")
                     return nil
                 }
             default:
-                log("Unsupported input type for \(name)")
+                log("Unsupported input type for \(name)\n")
                 return nil
             }
         }
@@ -275,7 +241,7 @@ class CoreMLProcessor: ObservableObject {
 
         predictTimes.sort()
         
-        log("Prediction times: \(predictTimes) ms")
+        log("Prediction times: \(predictTimes) ms\n")
 
         return predictTimes
     }
@@ -336,6 +302,7 @@ class CoreMLProcessor: ObservableObject {
         var operationStructure: [String: Any] = [:]
         
         operationStructure["op_number"] = operationCount
+        operationStructure["operator_id"] = operation.outputs.first?.name ?? "Unknown"
         operationStructure["operatorName"] = operation.operatorName
         operationStructure["inputs"] = operation.inputs.map { ["name": $0.key, "bindings": $0.value.bindings.map { getName(for: $0) } ] }
         operationStructure["outputs"] = operation.outputs.map { ["name": $0.name, "type": String(describing: $0.type)] }
@@ -407,9 +374,9 @@ class CoreMLProcessor: ObservableObject {
         let selectedDataFrame: DataFrame
         
         if fullProfile {
-            selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operatorName", "cost", "preferred_device", "supported_devices", "start_time", "end_time", "op_time")
+            selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operator_id", "operatorName", "cost", "preferred_device", "supported_devices", "start_time", "end_time", "op_time")
         } else {
-            selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operatorName", "cost", "preferred_device", "supported_devices")
+            selectedDataFrame = dataFrame.selecting(columnNames: "op_number", "operator_id", "operatorName", "cost", "preferred_device", "supported_devices")
         }
 
         let totalOp = selectedDataFrame.rows.count
@@ -461,7 +428,7 @@ class CoreMLProcessor: ObservableObject {
             }
             return MLFeatureValue(multiArray: multiArray)
         } catch {
-            log("Failed to create MLMultiArray: \(error)")
+            log("Failed to create MLMultiArray: \(error)\n")
             return nil
         }
     }
@@ -477,7 +444,7 @@ class CoreMLProcessor: ObservableObject {
         var pixelBuffer: CVPixelBuffer?
         let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32ARGB, attributes as CFDictionary, &pixelBuffer)
         guard status == kCVReturnSuccess else {
-            log("Failed to create pixel buffer")
+            log("Failed to create pixel buffer\n")
             return nil
         }
         CVPixelBufferLockBaseAddress(pixelBuffer!, [])
@@ -506,7 +473,7 @@ class CoreMLProcessor: ObservableObject {
             let dict: [NSNumber: NSNumber] = [NSNumber(value: Int64.random(in: 0..<10)): NSNumber(value: Double.random(in: 0..<1))]
             return try? MLFeatureValue(dictionary: dict)
         default:
-            log("Unsupported dictionary key type")
+            log("Unsupported dictionary key type\n")
             return nil
         }
     }
@@ -527,8 +494,184 @@ class CoreMLProcessor: ObservableObject {
             let sequence = (0..<length).map { _ in "dummy_string" }
             return MLFeatureValue(sequence: MLSequence(strings: sequence))
         default:
-            log("Unsupported sequence type")
+            log("Unsupported sequence type\n")
             return nil
         }
     }
+    
+    private func findLatestAnalyticsFile(in directory: String) -> URL? {
+        let fileManager = FileManager.default
+        let expandedPath = NSString(string: directory).expandingTildeInPath
+        
+        log("Expanded search path: \(expandedPath)\n")
+
+        guard let enumerator = fileManager.enumerator(atPath: expandedPath) else {
+            log("Failed to create file enumerator.\n")
+            return nil
+        }
+        
+        var analyticsFiles: [String] = []
+        
+        for case let file as String in enumerator {
+            if file.hasSuffix("analytics.mil") {
+                let fullPath = expandedPath + "/" + file
+                analyticsFiles.append(fullPath)
+//                log("Found file: \(fullPath)\n")
+            }
+        }
+        
+        if analyticsFiles.isEmpty {
+            log("No analytics.mil files found.\n")
+            return nil
+        }
+        
+        let latestFile = analyticsFiles.max(by: {
+            (file1, file2) -> Bool in
+            let file1Attributes = try? fileManager.attributesOfItem(atPath: file1)
+            let file2Attributes = try? fileManager.attributesOfItem(atPath: file2)
+            
+            if let file1Date = file1Attributes?[.modificationDate] as? Date,
+               let file2Date = file2Attributes?[.modificationDate] as? Date {
+                return file1Date < file2Date
+            }
+            return false
+        })
+        
+        if let latestFile = latestFile {
+            return URL(fileURLWithPath: latestFile)
+        } else {
+            log("Failed to find the latest analytics.mil file.\n")
+            return nil
+        }
+    }
+    
+    private func decodeAnalyticsFile(at url: URL) -> [OperationDetails] {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            log("Failed to read the content of \(url.path)")
+            return []
+        }
+        
+        var operations = [OperationDetails]()
+        
+        let tensorOperations = content.split(separator: ";").map { String($0) }.filter { $0.contains("tensor") }
+        
+        for tensorOperation in tensorOperations {
+            let operationDetails = extractSingle(tensorOperation: tensorOperation)
+            operations.append(operationDetails)
+        }
+        
+        return operations
+    }
+    
+    private func extractSingle(tensorOperation: String) -> OperationDetails {
+        let operationPattern = #"= (\w+)\("#
+        let operationRegex = try? NSRegularExpression(pattern: operationPattern, options: [])
+        var operation = "Not found"
+        if let match = operationRegex?.firstMatch(in: tensorOperation, options: [], range: NSRange(location: 0, length: tensorOperation.utf16.count)) {
+            if let range = Range(match.range(at: 1), in: tensorOperation) {
+                operation = String(tensorOperation[range])
+            }
+        }
+        
+        let runtimePattern = #"EstimatedRuntime\s*=\s*dict<string,\s*fp64>\(\{\{(.*?)\}\}\)"#
+        let runtimeRegex = try? NSRegularExpression(pattern: runtimePattern, options: [])
+        var runtimes = [String: Double]()
+        if let match = runtimeRegex?.firstMatch(in: tensorOperation, options: [], range: NSRange(location: 0, length: tensorOperation.utf16.count)) {
+            if let range = Range(match.range(at: 1), in: tensorOperation) {
+                let runtimesStr = String(tensorOperation[range])
+                let runtimePairPattern = #""(\w+)",\s*([\d\.e\+\-]+)"#
+                let runtimePairRegex = try? NSRegularExpression(pattern: runtimePairPattern, options: [])
+                let matches = runtimePairRegex?.matches(in: runtimesStr, options: [], range: NSRange(location: 0, length: runtimesStr.utf16.count)) ?? []
+                for match in matches {
+                    if let backendRange = Range(match.range(at: 1), in: runtimesStr),
+                       let runtimeRange = Range(match.range(at: 2), in: runtimesStr) {
+                        let backend = String(runtimesStr[backendRange])
+                        let runtime = Double(runtimesStr[runtimeRange]) ?? 0.0
+                        runtimes[backend] = runtime
+                    }
+                }
+            }
+        }
+        
+        let backendPattern = #"SelectedBackend\s*=\s*string\("(.*?)"\)"#
+        let backendRegex = try? NSRegularExpression(pattern: backendPattern, options: [])
+        var selectedBackend = "Not found"
+        if let match = backendRegex?.firstMatch(in: tensorOperation, options: [], range: NSRange(location: 0, length: tensorOperation.utf16.count)) {
+            if let range = Range(match.range(at: 1), in: tensorOperation) {
+                selectedBackend = String(tensorOperation[range])
+            }
+        }
+        
+        let namePattern = #"name\s*=\s*string\("(.*?)"\)"#
+        let nameRegex = try? NSRegularExpression(pattern: namePattern, options: [])
+        var name: String? = nil
+        if let match = nameRegex?.firstMatch(in: tensorOperation, options: [], range: NSRange(location: 0, length: tensorOperation.utf16.count)) {
+            if let range = Range(match.range(at: 1), in: tensorOperation) {
+                name = String(tensorOperation[range])
+            }
+        }
+        
+        let validationMessagePattern = #"ValidationMessage\s*=\s*dict<string,\s*string>\(\{\{(.*?)\}\}\)"#
+        let validationMessageRegex = try? NSRegularExpression(pattern: validationMessagePattern, options: [])
+        var validationMessages = [String: String]()
+        if let match = validationMessageRegex?.firstMatch(in: tensorOperation, options: [], range: NSRange(location: 0, length: tensorOperation.utf16.count)) {
+            if let range = Range(match.range(at: 1), in: tensorOperation) {
+                let validationMessagesStr = String(tensorOperation[range])
+                let validationMessagePairPattern = #""(\w+)",\s*"(.*?)""#
+                let validationMessagePairRegex = try? NSRegularExpression(pattern: validationMessagePairPattern, options: [])
+                let matches = validationMessagePairRegex?.matches(in: validationMessagesStr, options: [], range: NSRange(location: 0, length: validationMessagesStr.utf16.count)) ?? []
+                for match in matches {
+                    if let backendRange = Range(match.range(at: 1), in: validationMessagesStr),
+                       let messageRange = Range(match.range(at: 2), in: validationMessagesStr) {
+                        let backend = String(validationMessagesStr[backendRange])
+                        let message = String(validationMessagesStr[messageRange]).replacingOccurrences(of: "\\\"", with: "\"") + "\n"
+                        validationMessages[backend] = message
+                    }
+                }
+            }
+        }
+        
+        return OperationDetails(
+            operation: operation,
+            runtimes: runtimes,
+            selectedBackend: selectedBackend,
+            name: name,
+            validationMessages: validationMessages
+        )
+    }
+    
+    private func convertOperationsToDataFrame(operations: [OperationDetails]) throws -> DataFrame {
+  
+        let operationsData = try JSONSerialization.data(withJSONObject: operations.map { $0.dictionaryRepresentation }, options: [])
+        var dataFrame = try DataFrame(jsonData: operationsData)
+        dataFrame.removeRow(at: 0)
+        
+        var count = 0
+        while count < 5, let operationValue = dataFrame["operation", String.self][0], operationValue.contains("string") {
+            dataFrame.removeRow(at: 0)
+            count += 1
+        }
+        
+        return dataFrame.selecting(columnNames: "operation", "name", "validationMessages")
+    }
+    
+    private func copyValidationMessages(from analyticsDataFrame: DataFrame, to selectedDataFrame: inout DataFrame) {
+        // Crear la columna "validationMessages" en selectedDataFrame si no existe
+        selectedDataFrame.append(column: Column<String>(name: "validationMessages", capacity: selectedDataFrame.rows.count))
+
+        for index in 0..<selectedDataFrame.rows.count {
+                let aneMessage = (analyticsDataFrame["validationMessages", Dictionary<String, Optional<Any>>.self][index]?["ane"] as? String) ?? ""
+                selectedDataFrame["validationMessages", String.self][index] = aneMessage
+            }
+    }
+
+
+
 }
+
+//        if let validationMessagesColumn = dataFrame["validationMessages", Dictionary<String, Optional<Any>>.self][0],
+//               let aneMessage = validationMessagesColumn["ane"] ?? nil {
+//                print("Validation message for 'ane' at row 0: \(aneMessage ?? "")")
+//            } else {
+//                print("No validation messages found for 'ane' at row 0.")
+//            }

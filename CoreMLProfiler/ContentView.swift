@@ -22,8 +22,10 @@ struct ContentView: View {
     @State private var operatorData: [OperatorData] = []
     @State private var sortOrder: [KeyPathComparator<OperatorData>] = [
         .init(\.op_number, order: .forward),
+        .init(\.operator_id, order: .forward),
         .init(\.cost, order: .forward),
         .init(\.operatorName, order: .forward),
+        .init(\.op_time, order: .forward),
         .init(\.preferred_device, order: .forward),
         .init(\.supported_devices, order: .forward),
     ]
@@ -257,7 +259,10 @@ struct ContentView: View {
                                 Text("\(data.op_number)")
                             }
                             .width(ideal: 30)
-                            TableColumn("Operator Name", value: \.operatorName) { data in
+                            TableColumn("Operator Name", value: \.operator_id) { data in
+                                Text(data.operator_id)
+                            }
+                            TableColumn("Operator Type", value: \.operatorName) { data in
                                 Text(data.operatorName)
                             }
                             TableColumn("Cost", value: \.cost) { data in
@@ -267,15 +272,11 @@ struct ContentView: View {
                             .width(min: 100)
                             
                             if full {
-                                TableColumn("Start Time (ms)") { data in
-                                    Text("\(data.start_time ?? 0.0, specifier: "%.3f")")
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                }
-                                TableColumn("End Time (ms)") { data in
+                                TableColumn("Accum. Time (ms)", value: \.end_time) { data in
                                     Text("\(data.end_time ?? 0.0, specifier: "%.3f")")
                                         .frame(maxWidth: .infinity, alignment: .center)
                                 }
-                                TableColumn("Op Time (ms)") { data in
+                                TableColumn("Est. Time (ms)",  value: \.op_time) { data in
                                     Text("\(data.op_time ?? 0.0, specifier: "%.3f")")
                                         .foregroundColor(colorScheme == .dark ? .green : .blue)
                                         .frame(maxWidth: .infinity, alignment: .center)
@@ -289,6 +290,15 @@ struct ContentView: View {
                             TableColumn("Supported Devices", value: \.supported_devices) { data in
                                 Text(data.supported_devices)
                             }
+                            TableColumn("ANE Incompatibility Reasons") { data in
+                                Text(data.ane_msg)
+                                    .foregroundColor(colorScheme == .dark ? .green : .blue)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .lineLimit(nil)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    
+                            }
+                            .width(min: 300)
                         }
                         .id(viewID)
                         .onChange(of: sortOrder) {
@@ -367,13 +377,15 @@ struct ContentView: View {
                 operatorData = selectedDataFrame.rows.map { row in
                     OperatorData(
                         op_number: row["op_number"] as? Int ?? 0,
+                        operator_id: row["operator_id"] as? String ?? "",
                         operatorName: row["operatorName"] as? String ?? "",
                         cost: row["cost"] as? Double ?? 0.0,
                         preferred_device: row["preferred_device"] as? String ?? "",
                         supported_devices: row["supported_devices"] as? String ?? "",
-                        start_time: row["start_time"] as? Double,
-                        end_time: row["end_time"] as? Double,
-                        op_time: row["op_time"] as? Double
+                        start_time: row["start_time"] as? Double ?? 0.0,
+                        end_time: row["end_time"] as? Double ?? 0.0,
+                        op_time: row["op_time"] as? Double ?? 0.0,
+                        ane_msg: row["validationMessages"] as? String ?? ""
                     )
                 }
                 
