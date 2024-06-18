@@ -109,15 +109,16 @@ class CoreMLProcessor: ObservableObject {
                 
                 // Decode the analytics.mil file
                 let operations = decodeAnalyticsFile(at: latestAnalyticsFile)
-//                log("Decoded operations: \(operations)\n")
+//                print("Decoded operations: \(operations)\n")
                 
                 // Convert operations to DataFrame
                 let analyticsDataFrame = try convertOperationsToDataFrame(operations: operations)
-                print("Analytics DataFrame: \(analyticsDataFrame)\n")
+//                print("Analytics DataFrame: \(analyticsDataFrame)\n")
                 
                 // Copy validation messages to selectedDataFrame
                 copyValidationMessages(from: analyticsDataFrame, to: &selectedDataFrame)
-                print("Consolided DataFrame: \(selectedDataFrame.selecting(columnNames: "validationMessages"))\n")
+                //print("Consolided DataFrame: \(selectedDataFrame.selecting(columnNames: "validationMessages"))\n")
+                
             }
             
             return (selectedDataFrame, counts)

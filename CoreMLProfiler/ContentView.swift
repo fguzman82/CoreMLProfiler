@@ -382,9 +382,9 @@ struct ContentView: View {
                         cost: row["cost"] as? Double ?? 0.0,
                         preferred_device: row["preferred_device"] as? String ?? "",
                         supported_devices: row["supported_devices"] as? String ?? "",
-                        start_time: row["start_time"] as? Double ?? 0.0,
-                        end_time: row["end_time"] as? Double ?? 0.0,
-                        op_time: row["op_time"] as? Double ?? 0.0,
+                        start_time: full ? (row["start_time"] as? Double ?? 0.0) : 0.0,
+                        end_time: full ? (row["end_time"] as? Double ?? 0.0) : 0.0,
+                        op_time: full ? (row["op_time"] as? Double ?? 0.0) : 0.0,
                         ane_msg: row["validationMessages"] as? String ?? ""
                     )
                 }
