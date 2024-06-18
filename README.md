@@ -1,7 +1,7 @@
 # CoreMLProfiler
 
 <p align="center">
-<img width="1274" alt="App_screenshot" src="https://github.com/fguzman82/CoreMLProfiler/assets/34175524/ce92bada-9736-4c30-b3e9-7880de36adca">
+<img width="1274" alt="App_screenshot" src="https://github.com/fguzman82/CoreMLProfiler/assets/34175524/02a155de-04e7-4b0f-9d0b-965c6ce6115f">
 </p>
 
 ## Overview
