@@ -101,7 +101,7 @@ Contributions are welcome! Please feel free to submit a Pull Request or open an 
 
 ## Acknowledgements
 
-Special thanks to [@FL33TW00D](https://github.com/FL33TW00D) for their interesting discovery regarding the ANE report.
+Special thanks to [@FL33TW00D](https://github.com/FL33TW00D) for his interesting discovery regarding the ANE report.
 
 
 ## License
