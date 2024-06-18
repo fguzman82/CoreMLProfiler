@@ -6,7 +6,8 @@
 
 ## Overview
 
-CoreMLProfiler is a macOS application designed to profile CoreML models. **It provides detailed estimates for each operation's time**, allowing users to view and filter results in a table. The application supports both `.mlpackage` and `.mlmodelc` formats and offers comprehensive insights into compilation, loading, and prediction times. Users can select different compute units and visualize performance metrics through an intuitive interface, with comprehensive statistics on all aspects of model profiling.
+CoreMLProfiler is a macOS application designed to profile CoreML models. **It provides detailed estimates for each operation's time**, allowing users to view and filter results in a table. The application supports both `.mlpackage` and `.mlmodelc` formats and offers comprehensive insights into compilation, loading, and prediction times. Users can select different compute units and visualize performance metrics through an intuitive interface, with comprehensive statistics on all aspects of model profiling, including report on reasons for unsupported operations on the Neural Engine.
+
 
 ## Features
 
