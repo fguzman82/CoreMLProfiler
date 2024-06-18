@@ -122,6 +122,13 @@ For any questions or inquiries, please contact Fabio Guzman at fabioandres.guzma
 
 ## Release Notes
 
+### v0.2
+
+- Added detailed reports on reasons for unsupported operations on the Neural Engine.
+- Enhanced user interface for better visualization of performance metrics.
+- Improved sorting and filtering capabilities for the results table.
+- Bug fixes and performance improvements.
+
 ### v0.1
 
 - Initial release of CoreMLProfiler.
