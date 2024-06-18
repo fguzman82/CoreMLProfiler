@@ -107,6 +107,11 @@ A log terminal is included to monitor the profiling flow and visualize errors if
 
 Contributions are welcome! Please feel free to submit a Pull Request or open an Issue to discuss changes or improvements.
 
+## Acknowledgements
+
+Special thanks to [@FL33TW00D](https://github.com/FL33TW00D) for their interesting discovery regarding the ANE report.
+
+
 ## License
 
 CoreMLProfiler is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
