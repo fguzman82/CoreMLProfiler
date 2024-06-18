@@ -11,13 +11,18 @@ CoreMLProfiler is a macOS application designed to profile CoreML models. **It pr
 
 ## Features
 
+## Features
+
 - Supports CoreML models in both `.mlpackage` and `.mlmodelc` (compiled models) formats.
 - Profiles compilation, loading, and prediction times.
+- Includes reports on **reasons for unsupported operations on the Neural Engine**.
 - Visualize the performance metrics through an intuitive interface.
 - Sort the cost column to identify the most expensive operations.
 - Option to export performance data to JSON.
 - Test your models on different compute units like CPU, GPU, and Neural Engine.
-- macOS native app using SwiftUI
+- macOS native app using SwiftUI.
+
+
 
 ## Compatibility
 
